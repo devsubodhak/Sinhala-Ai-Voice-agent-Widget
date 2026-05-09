@@ -1,0 +1,112 @@
+{
+  "entities": {
+    "Config": {
+      "title": "System Configuration",
+      "description": "Global settings for the voice agent and business preferences.",
+      "type": "object",
+      "properties": {
+        "geminiApiKey": { "type": "string", "description": "Custom Gemini API key if provided by user." },
+        "voiceName": { "type": "string", "description": "Name of the prebuilt voice to use (e.g., Kore, Puck)." },
+        "systemInstruction": { "type": "string", "description": "Global instruction for the AI agent." },
+        "businessName": { "type": "string", "description": "Name of the business." },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["businessName", "updatedAt"]
+    },
+    "KnowledgeBase": {
+      "title": "Knowledge Base Entry",
+      "description": "Specific business information or documents used as context for the agent.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string", "description": "e.g., Pricing, Services, FAQ" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "createdAt", "updatedAt"]
+    },
+    "Session": {
+      "title": "User Session",
+      "description": "A voice interaction session between a user and the agent.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Anonymous or persistent user ID." },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "lastActivity": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "ended"] }
+      },
+      "required": ["startedAt", "lastActivity", "status"]
+    },
+    "Query": {
+      "title": "Interaction Query",
+      "description": "A single question and answer pair within a session.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string" },
+        "userText": { "type": "string", "description": "Transcribed user question." },
+        "agentText": { "type": "string", "description": "AI generated response." },
+        "sentiment": { "type": "string", "enum": ["positive", "neutral", "negative"] },
+        "resolved": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sessionId", "userText", "agentText", "timestamp"]
+    },
+    "Lead": {
+      "title": "Meeting Lead",
+      "description": "Captured contact details and meeting request from a user.",
+      "type": "object",
+      "properties": {
+        "agentId": { "type": "string", "description": "The business ID the lead belongs to." },
+        "name": { "type": "string" },
+        "contact": { "type": "string" },
+        "time": { "type": "string" },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["new", "contacted", "scheduled"] }
+      },
+      "required": ["agentId", "name", "contact", "time", "createdAt"]
+    },
+    "ConversationSummary": {
+      "title": "Conversation Summary",
+      "description": "An AI-generated summary of a voice conversation.",
+      "type": "object",
+      "properties": {
+        "agentId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "summary": { "type": "string" },
+        "topics": { "type": "array", "items": { "type": "string" } },
+        "sentiment": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "duration": { "type": "number" }
+      },
+      "required": ["agentId", "sessionId", "summary", "timestamp"]
+    }
+  },
+  "firestore": {
+    "config/{userId}": {
+      "schema": "Config",
+      "description": "Per-user configuration."
+    },
+    "knowledgeBase": {
+      "schema": "KnowledgeBase",
+      "description": "Collection of knowledge base documents."
+    },
+    "sessions": {
+      "schema": "Session",
+      "description": "User interaction sessions."
+    },
+    "sessions/{sessionId}/queries": {
+      "schema": "Query",
+      "description": "Queries within a specific session."
+    },
+    "leads": {
+      "schema": "Lead",
+      "description": "Captured leads for meetings."
+    },
+    "summaries": {
+      "schema": "ConversationSummary",
+      "description": "AI-generated summaries of conversations."
+    }
+  }
+}

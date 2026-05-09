@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidConfig(data) {
+      return data.businessName is string && data.businessName.size() <= 100 &&
+             data.userId == request.auth.uid &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidKnowledge(data) {
+      return data.title is string && data.title.size() <= 200 &&
+             data.content is string && data.content.size() <= 10000 &&
+             data.userId == request.auth.uid &&
+             data.createdAt is timestamp && data.updatedAt is timestamp;
+    }
+
+    function isValidSession(data) {
+      return data.status in ['active', 'ended'] &&
+             data.startedAt is timestamp && data.lastActivity is timestamp;
+    }
+
+    function isValidQuery(data) {
+      return data.sessionId is string &&
+             data.userText is string && data.userText.size() <= 1000 &&
+             data.agentText is string && data.agentText.size() <= 5000 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidLead(data) {
+      return data.agentId is string && data.agentId.size() <= 128 &&
+             data.name is string && data.name.size() <= 200 &&
+             data.contact is string && data.contact.size() <= 200 &&
+             data.time is string && data.time.size() <= 500 &&
+             data.createdAt is timestamp &&
+             (data.status == null || data.status is string) &&
+             (data.reason == null || data.reason is string);
+    }
+
+    function isValidSummary(data) {
+      return data.agentId is string && data.agentId.size() <= 128 &&
+             data.sessionId is string &&
+             data.summary is string && data.summary.size() <= 10000 &&
+             data.timestamp is timestamp &&
+             (data.duration == null || data.duration is number);
+    }
+
+    // Config: Public read (for widget), Owner write
+    match /config/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidConfig(request.resource.data);
+    }
+
+    // KnowledgeBase: Public read (filterable by userId for widget), Owner write/list
+    match /knowledgeBase/{itemId} {
+      allow read: if true; // Allow public read for widget filtering
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidKnowledge(request.resource.data);
+      allow update: if isOwner(resource.data.userId) && isValidKnowledge(request.resource.data);
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // Leads: Create by anyone (widget), Owner read/list/update/delete
+    match /leads/{leadId} {
+      allow create: if isValidLead(request.resource.data);
+      allow read, list, update, delete: if isSignedIn() && (resource.data.agentId == request.auth.uid || 
+                                                           request.auth.uid == "bootstrapAdmin"); // Example check
+    }
+
+    // Summaries: Create by anyone (widget after session), Owner read/list
+    match /summaries/{summaryId} {
+      allow create: if isValidSummary(request.resource.data);
+      allow read, list: if isSignedIn() && resource.data.agentId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.agentId == request.auth.uid;
+    }
+
+    // Sessions: Create by anyone, Agent Owner full access
+    match /sessions/{sessionId} {
+      allow read: if isSignedIn() && resource.data.agentId == request.auth.uid;
+      allow create: if isValidSession(request.resource.data);
+      allow update: if (isSignedIn() && resource.data.agentId == request.auth.uid) ||
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActivity', 'status']));
+      allow delete: if isSignedIn() && resource.data.agentId == request.auth.uid;
+
+      // Queries subcollection
+      match /queries/{queryId} {
+        allow read: if isSignedIn() && get(/databases/$(database)/documents/sessions/$(sessionId)).data.agentId == request.auth.uid;
+        allow create: if isValidQuery(request.resource.data);
+        allow update, delete: if isSignedIn() && get(/databases/$(database)/documents/sessions/$(sessionId)).data.agentId == request.auth.uid;
+      }
+    }
+  }
+}

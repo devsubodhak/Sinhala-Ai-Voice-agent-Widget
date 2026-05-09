@@ -1,0 +1,6 @@
+{
+  "name": "OmniVoice AI",
+  "description": "Website-integrated voice agent with business knowledge base management and analytics dashboard.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": []
+}
